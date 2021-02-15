@@ -17,12 +17,14 @@ load_dotenv()
 def main():
     account = Account.from_key(get_private_key())
     w3 = Web3(Web3.WebsocketProvider(os.getenv("INFURA_URL")))
-    # w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-    # w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
+    if os.getenv("USE_MAINNET") and int(os.getenv("USE_MAINNET")):
+        contract_address = os.getenv("ZORA_CONTRACT_ADDRESS_MAINNET")
+    else:
+        contract_address = os.getenv("ZORA_CONTRACT_ADDRESS_RINKEBY")
+        w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     w3.eth.default_account = account.address
-    contract = w3.eth.contract(
-        address=os.getenv("ZORA_CONTRACT_ADDRESS"), abi=get_abi()
-    )
+    contract = w3.eth.contract(address=contract_address, abi=get_abi())
     mint(os.getenv("FILENAME"), contract, w3)
 
 
@@ -88,7 +90,7 @@ def mint(filename, contract, w3):
 
     gas_estimate = contract.functions.mint(
         data=zora_data, bidShares=zora_bidshares
-    ).estimateGas()
+    ).estimateGas({"from": w3.eth.default_account})
     # tx_hash = contract.functions.mint(
     #     data=zora_data, bidShares=zora_bidshares
     # ).transact()
