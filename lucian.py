@@ -89,14 +89,14 @@ def mint(filename, contract, w3):
     gas_estimate = contract.functions.mint(
         data=zora_data, bidShares=zora_bidshares
     ).estimateGas()
-    tx_hash = contract.functions.mint(
-        data=zora_data, bidShares=zora_bidshares
-    ).transact()
-    receipt = w3.eth.waitForTransactionReceipt(tx_hash)
+    # tx_hash = contract.functions.mint(
+    #     data=zora_data, bidShares=zora_bidshares
+    # ).transact()
+    # receipt = w3.eth.waitForTransactionReceipt(tx_hash)
 
     print(gas_estimate)
-    print(tx_hash)
-    print(receipt)
+    # print(tx_hash)
+    # print(receipt)
 
 
 def get_abi():
