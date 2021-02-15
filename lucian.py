@@ -17,8 +17,8 @@ load_dotenv()
 def main():
     account = Account.from_key(get_private_key())
     w3 = Web3(Web3.WebsocketProvider(os.getenv("INFURA_URL")))
-    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-    w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
+    # w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    # w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     w3.eth.default_account = account.address
     contract = w3.eth.contract(
         address=os.getenv("ZORA_CONTRACT_ADDRESS"), abi=get_abi()
