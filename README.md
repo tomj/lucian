@@ -1,6 +1,6 @@
 ## Lucian: mint Zora NFT's using Python
 
-![Banner](lucian.jpg)
+[![Banner](lucian.jpg)](https://www.ft.com/content/3d7ddd18-cea4-11e9-b018-ca4456540ea6)
 
 ### Overview
 
