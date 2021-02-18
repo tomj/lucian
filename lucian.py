@@ -1,3 +1,4 @@
+import collections
 import json
 import math
 import os
@@ -119,6 +120,23 @@ def get_private_key():
     private_key = f"0x{hdwallet.private_key()}"
     hdwallet.clean_derivation()
     return private_key
+
+
+def generate_metadata(name, description, mime_type, version="zora-20210101"):
+    metadata = {
+        "name": name,
+        "description": description,
+        "version": version,
+        "mimeType": mime_type,
+    }
+    metadata = collections.OrderedDict(sorted(metadata.items()))
+    return metadata
+
+
+def metadata_sha(metadata):
+    metadata_sha = sha256(json.dumps(metadata, separators=(",", ":")).encode("utf-8"))
+    print(metadata_sha.hexdigest())
+    return metadata_sha.digest()
 
 
 if __name__ == "__main__":
