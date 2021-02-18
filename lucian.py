@@ -14,6 +14,12 @@ from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_mid
 
 load_dotenv()
 
+PINATA_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS"
+PINATA_HEADERS = {
+    "pinata_api_key": os.getenv("PINATA_API_KEY"),
+    "pinata_secret_api_key": os.getenv("PINATA_SECRET_API_KEY"),
+}
+
 
 def main():
     account = Account.from_key(get_private_key())
@@ -29,48 +35,40 @@ def main():
     mint(os.getenv("FILENAME"), contract, w3)
 
 
-def mint(filename, contract, w3):
-    url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
-    headers = {
-        "pinata_api_key": os.getenv("PINATA_API_KEY"),
-        "pinata_secret_api_key": os.getenv("PINATA_SECRET_API_KEY"),
-    }
+def upload_file_to_pinata(filename):
     files = {"file": open(filename, "rb")}
-    response = requests.post(url, files=files, headers=headers, verify=False)
+    response = requests.post(
+        PINATA_URL, files=files, headers=PINATA_HEADERS, verify=False
+    )
     asset_ipfs_hash = json.loads(response.content)["IpfsHash"]
+    return asset_ipfs_hash
 
-    # TODO: make this compliant with metadata schema concepts at
-    #       https://zora.engineering/protocol/smart-contracts and
-    #       https://github.com/ourzora/media-metadata-schemas
-    token_meta = {
-        "asset_ipfs_hash": asset_ipfs_hash,
-        "convenience_asset_url": f"https://ipfs.io/ipfs/{asset_ipfs_hash}",
-    }
-    token_meta_bytes = json.dumps(token_meta, indent=2).encode("utf-8")
+
+def upload_metadata_to_pinata(metadata):
+    token_meta_bytes = json.dumps(metadata, indent=2).encode("utf-8")
     files = {"file": token_meta_bytes}
-    response = requests.post(url, files=files, headers=headers, verify=False)
+    response = requests.post(
+        PINATA_URL, files=files, headers=PINATA_HEADERS, verify=False
+    )
     json_ipfs_hash = json.loads(response.content)["IpfsHash"]
+    return json_ipfs_hash
 
+
+def mint(filename, contract, w3, name, description, mime_type):
+    asset_ipfs_hash = upload_file_to_pinata(filename)
+    metadata = generate_metadata(name, description, mime_type)
+    metadata_ipfs_hash = upload_metadata_to_pinata(metadata)
     token_uri = f"https://ipfs.io/ipfs/{asset_ipfs_hash}"
-    metadata_uri = f"https://ipfs.io/ipfs/{json_ipfs_hash}"
+    metadata_uri = f"https://ipfs.io/ipfs/{metadata_ipfs_hash}"
 
     print(token_uri)
     print(metadata_uri)
 
-    BLOCK_SIZE = 65536
+    content_hash = content_sha(filename).digest()
+    metadata_hash = metadata_sha(metadata_sha).digest()
 
-    content_sha = sha256()
-    with open(filename, "rb") as f:
-        fb = f.read(BLOCK_SIZE)
-        while len(fb) > 0:
-            content_sha.update(fb)
-            fb = f.read(BLOCK_SIZE)
-
-    content_sha = content_sha.digest()
-    metadata_sha = sha256(json.dumps(token_meta).encode("utf-8")).digest()
-
-    print(content_sha)
-    print(metadata_sha)
+    print(content_hash)
+    print(metadata_hash)
 
     share = math.pow(10, 18)
     share = int(share * 100)
@@ -122,21 +120,35 @@ def get_private_key():
     return private_key
 
 
-def generate_metadata(name, description, mime_type, version="zora-20210101"):
+def generate_metadata(
+    name, description, mime_type, thumbnail_ipfs_cid=None, version="zora-20210101"
+):
     metadata = {
         "name": name,
         "description": description,
         "version": version,
         "mimeType": mime_type,
     }
+    if thumbnail_ipfs_cid:
+        metadata["thumbnailCID"] = thumbnail_ipfs_cid
     metadata = collections.OrderedDict(sorted(metadata.items()))
     return metadata
 
 
+def content_sha(filename):
+    BLOCK_SIZE = 65536
+    content_sha = sha256()
+    with open(filename, "rb") as f:
+        fb = f.read(BLOCK_SIZE)
+        while len(fb) > 0:
+            content_sha.update(fb)
+            fb = f.read(BLOCK_SIZE)
+    return content_sha
+
+
 def metadata_sha(metadata):
     metadata_sha = sha256(json.dumps(metadata, separators=(",", ":")).encode("utf-8"))
-    print(metadata_sha.hexdigest())
-    return metadata_sha.digest()
+    return metadata_sha
 
 
 if __name__ == "__main__":
